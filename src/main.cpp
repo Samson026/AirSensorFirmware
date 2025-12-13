@@ -56,8 +56,6 @@ void setup() {
     lv_tick_set_cb(my_get_millis);
 
     lv_lovyan_gfx_create(320, 240, lv_buffer, BUF_SIZE, true);
-    
-    ui_init();
 
     //  connect to wifi
     String ssid, password;
@@ -70,15 +68,18 @@ void setup() {
         wifi_connect(ssid, password);
     }
     String resp = get_location();
-    Serial.println(resp);
 
     deserializeJson(locationDoc, resp);
 
     resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
 
-    Serial.println(resp);
-
     deserializeJson(weatherDoc, resp);
+
+    const char* city = locationDoc["city"].as<const char*>();
+    char buf[16];
+    strncpy(buf, city, sizeof(buf));
+
+    ui_init(buf);
 }
 
 void loop() {

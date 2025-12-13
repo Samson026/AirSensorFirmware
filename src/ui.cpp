@@ -6,101 +6,120 @@ LV_FONT_DECLARE(notosans_18);
 
 lv_obj_t *screen;
 
-// values
-lv_obj_t *ui_room_temp;
-lv_obj_t *ui_humid;
-lv_obj_t *ui_outside_temp;
-lv_obj_t *ui_rainfall;
-lv_obj_t *ui_voc;
+// top
+static lv_obj_t *ui_city;
 
-static lv_obj_t* create_metric(
+// hero
+static lv_obj_t *ui_hero_value;
+static lv_obj_t *ui_hero_label;
+
+// small stats (bottom grid)
+static lv_obj_t *ui_humid;
+static lv_obj_t *ui_outside_temp;
+static lv_obj_t *ui_rainfall;
+static lv_obj_t *ui_voc;
+
+// helper: create a small stat cell (label + value)
+static void create_stat(
     lv_obj_t* parent,
     const char* label_text,
     lv_obj_t** value_label,
     lv_coord_t x,
     lv_coord_t y,
     lv_coord_t w,
-    lv_coord_t h
+    const char* sign_text
 ) {
-    lv_obj_t* container = lv_obj_create(parent);
-    lv_obj_set_size(container, w, h);
-    lv_obj_align(container, LV_ALIGN_TOP_LEFT, x, y);
+    // container just for positioning (no visible box)
+    lv_obj_t* c = lv_obj_create(parent);
+    lv_obj_set_size(c, w, 30);
+    lv_obj_align(c, LV_ALIGN_TOP_LEFT, x, y);
 
-    // subtle card look (still dark)
-    lv_obj_set_style_bg_color(container, lv_color_make(18,18,18), 0);
-    lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(container, 10, 0);
-    lv_obj_set_style_border_width(container, 1, 0);
-    lv_obj_set_style_border_color(container, lv_color_make(40,40,40), 0);
-    lv_obj_set_style_pad_all(container, 8, 0);
+    lv_obj_set_style_bg_opa(c, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(c, 0, 0);
+    lv_obj_set_style_pad_all(c, 0, 0);
 
-    lv_obj_t* label = lv_label_create(container);
+    lv_obj_t* label = lv_label_create(c);
     lv_label_set_text(label, label_text);
-    lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
     lv_obj_set_style_text_color(label, lv_palette_lighten(LV_PALETTE_GREY, 2), 0);
     lv_obj_set_style_text_font(label, &notosans_18, 0);
 
-    *value_label = lv_label_create(container);
-    lv_label_set_text(*value_label, "--");
-    lv_obj_align(*value_label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    *value_label = lv_label_create(c);
+    lv_label_set_text(*value_label, "----");
+    lv_obj_align(*value_label, LV_ALIGN_LEFT_MID, 60, 0);
     lv_obj_set_style_text_color(*value_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(*value_label, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_font(*value_label, &lv_font_montserrat_20, 0);
 
-    return container;
+    lv_coord_t sign_x = lv_obj_get_width(*value_label);
+
+    lv_obj_t* sign = lv_label_create(c);
+     lv_label_set_text(sign, sign_text);
+    lv_obj_align(sign, LV_ALIGN_LEFT_MID, 60+45, 0);
+    lv_obj_set_style_text_color(sign, lv_palette_lighten(LV_PALETTE_GREY, 2), 0);
+    lv_obj_set_style_text_font(sign, &lv_font_montserrat_14, 0);
+
 }
 
-void ui_init() {
+void ui_init(char* location) {
     screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
 
-    // Layout constants for 320x240
+    // === Top: City name ===
+    ui_city = lv_label_create(screen);
+    lv_label_set_text(ui_city, location);
+    lv_obj_align(ui_city, LV_ALIGN_TOP_MID, 0, 8);
+    lv_obj_set_style_text_font(ui_city, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(ui_city, lv_color_white(), 0);
+
+    // === Hero: big room temp ===
+    ui_hero_value = lv_label_create(screen);
+    lv_label_set_text(ui_hero_value, "--.-°C");
+    lv_obj_align(ui_hero_value, LV_ALIGN_TOP_MID, 0, 48);
+    lv_obj_set_style_text_font(ui_hero_value, &lv_font_montserrat_40, 0);
+    lv_obj_set_style_text_color(ui_hero_value, lv_color_white(), 0);
+
+    ui_hero_label = lv_label_create(screen);
+    lv_label_set_text(ui_hero_label, "室温");
+    lv_obj_align_to(ui_hero_label, ui_hero_value, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
+    lv_obj_set_style_text_font(ui_hero_label, &notosans_20, 0);
+    lv_obj_set_style_text_color(ui_hero_label, lv_palette_lighten(LV_PALETTE_GREY, 2), 0);
+
+    // === Bottom stats grid (2 columns x 2 rows) ===
     const lv_coord_t pad = 10;
-    const lv_coord_t title_h = 28;
-    const lv_coord_t gap = 8;
+    const lv_coord_t gap = 30;
+    const lv_coord_t col_w = (320 - pad*2 - gap) / 2; // ~141
+    const lv_coord_t row1_y = 140;
+    const lv_coord_t row2_y = 178;
 
-    const lv_coord_t card_w = (320 - pad*2 - gap) / 2;        // ~146
-    const lv_coord_t card_h = (240 - pad*2 - title_h - gap*2) / 3; // fits 3 rows
+    const lv_coord_t xL = pad;
+    const lv_coord_t xR = pad + col_w + gap;
 
-    // Title
-    lv_obj_t* title = lv_label_create(screen);
-    lv_label_set_text(title, "Tempatron");
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, pad);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(title, lv_color_white(), 0);
-
-    lv_coord_t y0 = pad + title_h;
-    lv_coord_t xL = pad;
-    lv_coord_t xR = pad + card_w + gap;
-
-    // Row 1
-    create_metric(screen, "室温",   &ui_room_temp,   xL, y0 + (card_h + gap) * 0, card_w, card_h);
-    create_metric(screen, "湿度",   &ui_humid,       xR, y0 + (card_h + gap) * 0, card_w, card_h);
-
-    // Row 2
-    create_metric(screen, "外気温", &ui_outside_temp,xL, y0 + (card_h + gap) * 1, card_w, card_h);
-    create_metric(screen, "降水量", &ui_rainfall,    xR, y0 + (card_h + gap) * 1, card_w, card_h);
-
-    // Row 3
-    create_metric(screen, "VOC",    &ui_voc,         xL + (xL + xR) /2, y0 + (card_h + gap) * 2, card_w, card_h);
+    create_stat(screen, "湿度",   &ui_humid,        xL, row1_y, col_w, "%");
+    create_stat(screen, "外気温", &ui_outside_temp, xR, row1_y, col_w, "°C");
+    create_stat(screen, "降水量", &ui_rainfall,     xL, row2_y, col_w, "mm");
+    create_stat(screen, "VOC",    &ui_voc,          xR, row2_y, col_w, "");
 
     lv_screen_load(screen);
 }
 
+// Updated signature suggestion (optional): add voc parameter later
 void update_ui(float humid, float temp, float outside_temp, float rainfall) {
-    char buf[16];
+    char buf[20];
 
+    // Hero (room temp)
     snprintf(buf, sizeof(buf), "%.1f°C", temp);
-    lv_label_set_text(ui_room_temp, buf);
+    lv_label_set_text(ui_hero_value, buf);
 
-    snprintf(buf, sizeof(buf), "%.1f%%", humid);
+    // Bottom stats
+    snprintf(buf, sizeof(buf), "%.1f", humid);
     lv_label_set_text(ui_humid, buf);
 
-    snprintf(buf, sizeof(buf), "%.1f°C", outside_temp);
+    snprintf(buf, sizeof(buf), "%.1f", outside_temp);
     lv_label_set_text(ui_outside_temp, buf);
 
-    snprintf(buf, sizeof(buf), "%.1fmm", rainfall);
+    snprintf(buf, sizeof(buf), "%.1f", rainfall);
     lv_label_set_text(ui_rainfall, buf);
 
-    // placeholder until logic exists
+    // placeholder until you add voc logic
     lv_label_set_text(ui_voc, "--");
 }
