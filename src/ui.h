@@ -2,4 +2,4 @@
 #include <lvgl.h>
 
 void ui_init();
-void update_ui(float humid, float temp);
+void update_ui(float humid, float temp, float outside_temp, float rainfall);

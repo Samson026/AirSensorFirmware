@@ -18,7 +18,7 @@ const unsigned long weather_refresh = 360000;
 // data
 sensors_event_t humid, temp;
 StaticJsonDocument<256> locationDoc;
-StaticJsonDocument<256> weatherDoc;
+StaticJsonDocument<4096> weatherDoc;
 float lat;
 float lon;
 
@@ -87,10 +87,12 @@ void loop() {
         server.handleClient();
     }
 
-    // update room data
+    // update room data and UI
     if (millis() - last_update_room >= room_refresh) {
         update_data();
-        update_ui(humid.relative_humidity, temp.temperature);
+        float outTemp = weatherDoc["current_weather"]["temperature"].as<float>();
+        float rainfall = weatherDoc["daily"]["precipitation_sum"][0].as<float>();
+        update_ui(humid.relative_humidity, temp.temperature, outTemp, rainfall);
         last_update_room = millis();
     }
 
@@ -98,6 +100,7 @@ void loop() {
     if (millis() - last_update_weather >= weather_refresh) {
         String resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
         deserializeJson(weatherDoc, resp);
+        last_update_weather = millis();
     }
 
     
