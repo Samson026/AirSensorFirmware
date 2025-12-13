@@ -1,8 +1,11 @@
+#include <ArduinoJson.h>
 #include "network_stuff.h"
 
 WebServer server(80);
 const String AP_NETWORK_ID = "KAPUKAPU";
 Preferences prefs;
+
+
 
 void handleRoot() {
   String page =
@@ -85,3 +88,60 @@ void wifi_connect(String ssid, String pass) {
 
     Serial.println("WiFi connected");
 }
+
+String get_location() {
+  HTTPClient http;
+  String ip = "";
+
+  http.begin("http://api.ipify.org");
+  int code = http.GET();
+
+  if (code > 0) {
+    Serial.print("HTTP ");
+    Serial.println(code);
+    ip = http.getString();
+  } else {
+    Serial.println("POST failed");
+  }
+
+  http.end();
+
+  String url = "http://ip-api.com/json/" + ip;
+  String resp = "";
+  http.begin(url);
+
+  code = http.GET();
+
+  if (code > 0) {
+    Serial.print("Location HTTP ");
+    Serial.println(code);
+    resp = http.getString();
+  } else {
+    Serial.println("POST failed");
+  }
+
+  return (resp);
+}
+
+String get_weather(float lat, float lon) {
+  HTTPClient http;
+  String url = "https://api.open-meteo.com/v1/forecast?";
+  url += "latitude=" + String(lat, 6);
+  url += "&longitude=" + String(lon, 6);
+  url += "&current_weather=true";
+  url += "&daily=temperature_2m_max,temperature_2m_min";
+  url += "&daily=precipitation_sum";
+
+  http.begin(url);
+
+  int code = http.GET();
+
+  if (code > 0) {
+    Serial.print("Weather HTTP ");
+    Serial.println(code);
+  }
+
+  String resp = http.getString();
+  return resp;
+}
+

@@ -2,6 +2,7 @@
 #include <Adafruit_SHT4x.h>
 #include <SPI.h>
 #include <lvgl.h>
+#include <ArduinoJson.h>
 #include "ui.h"
 #include "weather.h"
 #include "network_stuff.h"
@@ -10,11 +11,20 @@
 
 Adafruit_SHT4x sht41;
 
+// consts
+const unsigned long room_refresh = 1000;
+const unsigned long weather_refresh = 360000;
+
 // data
 sensors_event_t humid, temp;
+StaticJsonDocument<256> locationDoc;
+StaticJsonDocument<256> weatherDoc;
+float lat;
+float lon;
 
 // variables
-unsigned long last_update = 0;
+unsigned long last_update_room = 0;
+unsigned long last_update_weather = 0;
 
 #define BUF_SIZE 320 * 50
 uint8_t lv_buffer[BUF_SIZE];
@@ -59,6 +69,16 @@ void setup() {
     else {
         wifi_connect(ssid, password);
     }
+    String resp = get_location();
+    Serial.println(resp);
+
+    deserializeJson(locationDoc, resp);
+
+    resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
+
+    Serial.println(resp);
+
+    deserializeJson(weatherDoc, resp);
 }
 
 void loop() {
@@ -67,12 +87,19 @@ void loop() {
         server.handleClient();
     }
 
-    if (millis() - last_update >= 1000) {
+    // update room data
+    if (millis() - last_update_room >= room_refresh) {
         update_data();
         update_ui(humid.relative_humidity, temp.temperature);
-        last_update = millis();
-        // get_update();
+        last_update_room = millis();
     }
+
+    // update weather data
+    if (millis() - last_update_weather >= weather_refresh) {
+        String resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
+        deserializeJson(weatherDoc, resp);
+    }
+
     
     lv_timer_handler();
     delay(5);
