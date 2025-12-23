@@ -11,6 +11,6 @@ void handleSave();
 void saveWifiConfig(String& ssid, String& pass);
 void startConfigPortal();
 bool loadWifiConfig(String& ssidOut, String& passOut);
-void wifi_connect(String ssid, String pass);
+bool wifi_connect(String ssid, String pass);
 String get_location();
 String get_weather(float lat, float lon);

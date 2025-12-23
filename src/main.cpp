@@ -39,7 +39,7 @@ uint32_t my_get_millis(void)
 }
 
 void setup() {
-    Wire.begin(5, 6);
+    Wire.begin(6, 7);
     Serial.begin(115200);
     delay(1000);
     Serial.println("hello");
@@ -48,7 +48,7 @@ void setup() {
     // setup sht41
     if (!sht41.begin(&Wire)) {
         Serial.println("Couldn't find SHT4x");
-        while (1) delay(1);
+        // while (1) delay(1);
     }
 
     lv_init();
@@ -65,21 +65,28 @@ void setup() {
     }
 
     else {
-        wifi_connect(ssid, password);
+        bool resp = wifi_connect(ssid, password);
+        if (!resp) {
+            startConfigPortal();
+        }
+        else {
+            Serial.println("init ui");
+             String resp = get_location();
+
+            deserializeJson(locationDoc, resp);
+
+            resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
+
+            deserializeJson(weatherDoc, resp);
+
+            const char* city = locationDoc["city"].as<const char*>();
+            char buf[16];
+            strncpy(buf, city, sizeof(buf));
+
+            ui_init(buf);
+        }
     }
-    String resp = get_location();
-
-    deserializeJson(locationDoc, resp);
-
-    resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
-
-    deserializeJson(weatherDoc, resp);
-
-    const char* city = locationDoc["city"].as<const char*>();
-    char buf[16];
-    strncpy(buf, city, sizeof(buf));
-
-    ui_init(buf);
+   
 }
 
 void loop() {
@@ -87,25 +94,26 @@ void loop() {
     if (WiFi.getMode() == WIFI_AP) {
         server.handleClient();
     }
+    else {
+        // update room data and UI
+        if (millis() - last_update_room >= room_refresh) {
+            update_data();
+            float outTemp = weatherDoc["current_weather"]["temperature"].as<float>();
+            float rainfall = weatherDoc["daily"]["precipitation_sum"][0].as<float>();
+            update_ui(humid.relative_humidity, temp.temperature, outTemp, rainfall);
+            last_update_room = millis();
+        }
 
-    // update room data and UI
-    if (millis() - last_update_room >= room_refresh) {
-        update_data();
-        float outTemp = weatherDoc["current_weather"]["temperature"].as<float>();
-        float rainfall = weatherDoc["daily"]["precipitation_sum"][0].as<float>();
-        update_ui(humid.relative_humidity, temp.temperature, outTemp, rainfall);
-        last_update_room = millis();
+        // update weather data
+        if (millis() - last_update_weather >= weather_refresh) {
+            String resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
+            deserializeJson(weatherDoc, resp);
+            last_update_weather = millis();
+        }
+
+        
+        lv_timer_handler();
     }
-
-    // update weather data
-    if (millis() - last_update_weather >= weather_refresh) {
-        String resp = get_weather(locationDoc["lat"], locationDoc["lon"]);
-        deserializeJson(weatherDoc, resp);
-        last_update_weather = millis();
-    }
-
-    
-    lv_timer_handler();
     delay(5);
 }
 

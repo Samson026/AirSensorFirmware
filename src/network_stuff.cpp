@@ -40,6 +40,7 @@ void handleSave() {
 void startConfigPortal() {
   Serial.println("Starting config portal...");
 
+  WiFi.disconnect();
   WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_NETWORK_ID, "");
 
@@ -72,21 +73,32 @@ bool loadWifiConfig(String& ssidOut, String& passOut) {
   if (ssid.length() == 0) return false;
   ssidOut = ssid;
   passOut = pass;
+
+  Serial.println(ssidOut);
+  Serial.println(passOut);
   return true;
 }
 
-void wifi_connect(String ssid, String pass) {
+bool wifi_connect(String ssid, String pass) {
+    int attempts = 0;
+
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);
 
     WiFi.begin(ssid, pass);
 
     while (WiFi.status() != WL_CONNECTED) {
+        attempts +=1;
         Serial.println("connecting to WiFi...");
+
+        if (attempts == 20) {
+          return false;
+        }
         delay(1000);
     }
 
     Serial.println("WiFi connected");
+    return true;
 }
 
 String get_location() {
@@ -97,9 +109,10 @@ String get_location() {
   int code = http.GET();
 
   if (code > 0) {
-    Serial.print("HTTP ");
+    Serial.print("IP HTTP ");
     Serial.println(code);
     ip = http.getString();
+    Serial.println(ip);
   } else {
     Serial.println("POST failed");
   }
@@ -119,7 +132,6 @@ String get_location() {
   } else {
     Serial.println("POST failed");
   }
-
   return (resp);
 }
 
