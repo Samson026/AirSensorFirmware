@@ -3,21 +3,10 @@
 
 LV_FONT_DECLARE(notosans_20);
 LV_FONT_DECLARE(notosans_18);
+const String AP_NETWORK_ID = "KAPUKAPU";
 
-lv_obj_t *screen;
+UIManager uiManager;
 
-// top
-static lv_obj_t *ui_city;
-
-// hero
-static lv_obj_t *ui_hero_value;
-static lv_obj_t *ui_hero_label;
-
-// small stats (bottom grid)
-static lv_obj_t *ui_humid;
-static lv_obj_t *ui_outside_temp;
-static lv_obj_t *ui_rainfall;
-static lv_obj_t *ui_voc;
 
 // helper: create a small stat cell (label + value)
 static void create_stat(
@@ -60,25 +49,24 @@ static void create_stat(
 
 }
 
-void ui_init(char* location) {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+void UIManager::ui_init_dashboard() {
+    lv_obj_set_style_bg_color(screen_dashboard, lv_color_black(), 0);
 
     // === Top: City name ===
-    ui_city = lv_label_create(screen);
-    lv_label_set_text(ui_city, location);
+    ui_city = lv_label_create(screen_dashboard);
+    lv_label_set_text(ui_city, "---");
     lv_obj_align(ui_city, LV_ALIGN_TOP_MID, 0, 8);
     lv_obj_set_style_text_font(ui_city, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(ui_city, lv_color_white(), 0);
 
     // === Hero: big room temp ===
-    ui_hero_value = lv_label_create(screen);
+    ui_hero_value = lv_label_create(screen_dashboard);
     lv_label_set_text(ui_hero_value, "--.-°C");
     lv_obj_align(ui_hero_value, LV_ALIGN_TOP_MID, 0, 48);
     lv_obj_set_style_text_font(ui_hero_value, &lv_font_montserrat_40, 0);
     lv_obj_set_style_text_color(ui_hero_value, lv_color_white(), 0);
 
-    ui_hero_label = lv_label_create(screen);
+    ui_hero_label = lv_label_create(screen_dashboard);
     lv_label_set_text(ui_hero_label, "室温");
     lv_obj_align_to(ui_hero_label, ui_hero_value, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
     lv_obj_set_style_text_font(ui_hero_label, &notosans_20, 0);
@@ -94,16 +82,58 @@ void ui_init(char* location) {
     const lv_coord_t xL = pad;
     const lv_coord_t xR = pad + col_w + gap;
 
-    create_stat(screen, "湿度",   &ui_humid,        xL, row1_y, col_w, "%");
-    create_stat(screen, "外気温", &ui_outside_temp, xR, row1_y, col_w, "°C");
-    create_stat(screen, "降水量", &ui_rainfall,     xL, row2_y, col_w, "mm");
-    create_stat(screen, "VOC",    &ui_voc,          xR, row2_y, col_w, "");
+    create_stat(screen_dashboard, "湿度",   &ui_humid,        xL, row1_y, col_w, "%");
+    create_stat(screen_dashboard, "外気温", &ui_outside_temp, xR, row1_y, col_w, "°C");
+    create_stat(screen_dashboard, "降水量", &ui_rainfall,     xL, row2_y, col_w, "mm");
+    create_stat(screen_dashboard, "VOC",    &ui_voc,          xR, row2_y, col_w, "");
+}
 
-    lv_screen_load(screen);
+void UIManager::ui_init_wifi_connect() {
+    lv_obj_set_style_bg_color(screen_wifi_connect, lv_color_black(), 0);
+
+    lv_obj_t *wifi_text = lv_label_create(screen_wifi_connect);
+    lv_label_set_text(wifi_text, "Connecting to WiFi...");
+    lv_obj_align(wifi_text, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_font(wifi_text, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(wifi_text, lv_color_white(), 0);
+}
+
+void UIManager::ui_init_wifi_ap_mode() {
+    lv_obj_set_style_bg_color(screen_wifi_ap, lv_color_black(), 0);
+
+    lv_obj_t *ap_text = lv_label_create(screen_wifi_ap);
+    lv_obj_t *ap_text_2 = lv_label_create(screen_wifi_ap);
+
+    char buf[128];
+    snprintf(buf, sizeof(buf), "Please connect to %s",
+        AP_NETWORK_ID);
+    lv_label_set_text(ap_text, buf);
+    lv_obj_align(ap_text, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_font(ap_text, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(ap_text, lv_color_white(), 0);
+
+    lv_label_set_text(ap_text_2, "open http://192.168.4.1/");
+    lv_obj_align(ap_text_2, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_set_style_text_font(ap_text_2, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(ap_text_2, lv_color_white(), 0);
+}
+
+void UIManager::ui_init() {
+    for (int i = 0; i < 3; i++) {
+        screens[i] = lv_obj_create(NULL);
+    }
+
+    screen_dashboard = screens[UI_DASHBOARD];
+    screen_wifi_connect = screens[UI_WIFI_CONNECT];
+    screen_wifi_ap = screens[UI_WIFI_AP];
+
+    ui_init_wifi_connect();
+    ui_init_dashboard();
+    ui_init_wifi_ap_mode();
 }
 
 // Updated signature suggestion (optional): add voc parameter later
-void update_ui(float humid, float temp, float outside_temp, float rainfall) {
+void UIManager::update_ui(float humid, float temp, float voc, float outside_temp, float rainfall) {
     char buf[20];
 
     // Hero (room temp)
@@ -121,5 +151,14 @@ void update_ui(float humid, float temp, float outside_temp, float rainfall) {
     lv_label_set_text(ui_rainfall, buf);
 
     // placeholder until you add voc logic
-    lv_label_set_text(ui_voc, "--");
+    snprintf(buf, sizeof(buf), "%.1f", voc);
+    lv_label_set_text(ui_voc, buf);
+}
+
+void UIManager::ui_load_page(UI_PAGE page) {
+    lv_scr_load(screens[page]);
+}
+
+void UIManager::set_location(char* location) {
+    lv_label_set_text(ui_city, location);
 }

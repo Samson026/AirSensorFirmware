@@ -82,8 +82,12 @@ bool loadWifiConfig(String& ssidOut, String& passOut) {
 bool wifi_connect(String ssid, String pass) {
     int attempts = 0;
 
-    WiFi.disconnect();
+    WiFi.disconnect(true, true);
+    WiFi.mode(WIFI_OFF);
+    delay(200);
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
+    delay(200);
 
     WiFi.begin(ssid, pass);
 
@@ -94,7 +98,7 @@ bool wifi_connect(String ssid, String pass) {
         if (attempts == 20) {
           return false;
         }
-        delay(1000);
+        delay(2000);
     }
 
     Serial.println("WiFi connected");
@@ -132,6 +136,7 @@ String get_location() {
   } else {
     Serial.println("POST failed");
   }
+  http.end();
   return (resp);
 }
 
@@ -154,6 +159,7 @@ String get_weather(float lat, float lon) {
   }
 
   String resp = http.getString();
+  http.end();
   return resp;
 }
 
